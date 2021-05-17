@@ -6,19 +6,19 @@ import {
   ExpressionWithTypeArguments,
   FunctionExpression,
   HeritageClause,
-  Identifier,
+  Identifier, IndexSignatureDeclaration, IntersectionType, IntersectionTypeNode, LiteralType,
   NewExpression,
   Node,
-  NodeArray,
+  NodeArray, NumericLiteral,
   ObjectLiteralExpression,
   ParenthesizedExpression,
-  PropertyAccessExpression,
+  PropertyAccessExpression, PropertyDeclaration, ReadonlyTextRange,
   SourceFile,
   Statement,
   StringLiteral,
-  SyntaxKind,
-  TypeNode,
-  TypeReferenceNode,
+  SyntaxKind, TypeElement, TypeLiteralNode,
+  TypeNode, TypeReference,
+  TypeReferenceNode, UnionType, UnionTypeNode,
 } from "typescript";
 import { getIdentifierName, } from "./helper_function";
 import { ArgumentDescription, ClassDescription, ClassExtender, DecoratorCallDescription } from "../types/types";
@@ -27,22 +27,26 @@ import { get_node_type } from "./get_node_type";
 
 export class SourceAnalyzer {
 
-  constructor(public file: SourceFile) {
-  }
+  constructor(public file: SourceFile) { }
 
   set_new_source = (file: SourceFile) => this.file = file;
 
-  print_r(x: NodeArray<Node>) {
-    return this.arr_printer(x);
+  print_r(nodes: NodeArray<Node>) {
+    return this.arr_printer(nodes);
   }
 
-  arr_printer(x: NodeArray<Node>) {
+  get_text (node: ReadonlyTextRange, trim: boolean = true) {
+    const sliced_string = this.file.text.slice(
+      node.pos,
+      node.end
+    );
+    return !trim ? sliced_string : sliced_string.trim();
+  }
+
+  arr_printer(nodes: NodeArray<Node>) {
     console.log(
       'arr_printer(): ',
-      this.file.text.slice(
-        x.pos,
-        x.end
-      )
+      this.get_text(nodes)
     );
   }
 
@@ -73,7 +77,7 @@ export class SourceAnalyzer {
 
     if (declaration.heritageClauses) {
       declaration.heritageClauses.forEach((e: HeritageClause) => {
-        this.printer(e);
+        // this.printer(e);
         if (e.token === SyntaxKind.ImplementsKeyword) {
           e.types.forEach(implemented_interface => {
             interfaces.push(
@@ -85,6 +89,34 @@ export class SourceAnalyzer {
         }
       });
     }
+
+    declaration.members.forEach(e => {
+      switch (e.kind) {
+        case SyntaxKind.PropertyDeclaration:
+          const property: PropertyDeclaration = <PropertyDeclaration>e;
+          const property_name = getIdentifierName(property.name);
+          // this.printer(property);
+
+          if (property.type) {
+            // console.log(get_node_type(property.type)); // TypeNode
+            this.analyze_type(property.type);
+            //
+          }
+          if (property.initializer) {
+
+          }
+
+          // property.hasOwnProperty('jsDoc') && property['jsDoc']
+          // console.log();
+
+          break;
+        case SyntaxKind.MethodDeclaration:
+        case SyntaxKind.Constructor:
+        case SyntaxKind.GetAccessor:
+        case SyntaxKind.SetAccessor:
+      }
+      // this.printer(e);
+    })
 
     const description: ClassDescription = {
       generic_types: {extends: [], type_name: ""},
@@ -257,5 +289,117 @@ export class SourceAnalyzer {
     return {
       name,
     }
+  }
+
+  analyze_type (node: TypeNode) {
+    let result: any;
+    switch (node.kind) {
+      case SyntaxKind.UnionType: {
+        const types = (<UnionTypeNode> node).types.map(e => this.analyze_type(e));
+        result = {
+          type: 'Union',
+          types: types,
+        };
+        break;
+      }
+      case SyntaxKind.UndefinedKeyword:
+        result = {
+          type: 'Undefined',
+        };
+        break;
+      case SyntaxKind.AnyKeyword:
+        result = {
+          type: 'Any'
+        };
+        break;
+      case SyntaxKind.IntersectionType: {
+        const types = (<IntersectionTypeNode> node).types.map(e => this.analyze_type(e));
+        result = {
+          type: 'Intersection',
+          types: types,
+        };
+
+        break;
+      }
+      case SyntaxKind.TypeReference:
+        result = {
+          type: 'TypeReference',
+          name: getIdentifierName((<TypeReferenceNode>node).typeName)
+        };
+        break;
+      case SyntaxKind.NumberKeyword:
+        result = {
+          type: 'Number',
+        };
+        break;
+      case SyntaxKind.StringKeyword:
+        result = {
+          type: 'String',
+        }
+        break;
+      case SyntaxKind.ObjectKeyword:
+        result = {
+          type: 'Object',
+        }
+        break;
+      case SyntaxKind.LiteralType:
+        //@ts-ignore
+        const text = this.get_text(node.literal);
+        if (text === 'null') {
+          result = {
+            type: 'Null',
+          }
+        } else {
+          console.log('Hello');
+          result = { type: text };
+        }
+        break;
+      case SyntaxKind.BooleanKeyword:
+        result = {
+          type: 'Boolean',
+        }
+        break;
+      case SyntaxKind.TypeLiteral: {
+        const types = (<TypeLiteralNode>node).members.map(e => {
+          if (e.name) {
+            return Object.assign(
+              {
+                name: e.name.getText(this.file),
+                type: 'Unknow',
+              },
+              this.analyze_type((<any>e).type),
+            );
+          } else {
+            // TODO :: Add extended indexing
+            //@ts-ignore
+            console.log('IndexSignatureDeclaration: ', (<IndexSignatureDeclaration>e).parameters[0].name.escapedText.toString());
+            return  {
+              name: 'code',
+              type: this.get_text((<IndexSignatureDeclaration>e).type),
+              wildcard: true,
+            }
+            console.log('No name', get_node_type(node));
+          }
+        });
+        result = {
+          type: 'Object',
+          types: types,
+          'type_': 'TypeLiteral'
+        };
+
+        this.printer(node);
+        console.log(result);
+        console.log();
+        break;
+      }
+
+      default: {
+        const type = get_node_type(node);
+        console.log('typetypetypetypetype: ', type);
+      }
+    }
+
+    // console.log('RESTULR   ',result);
+    return result;
   }
 }
