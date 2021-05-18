@@ -34,16 +34,16 @@ export interface ClassDescription {
     decorators?: DecoratorCallDescription[];
   }[];
   accessors?: AccessorDescription[];
-  methods: {
-    access_modifiers?: UnifiedModifier[];
-    name: string;
-    decorators?: DecoratorCallDescription[];
-    parameters: ParameterDescription[];
-    return_value: UnifiedTypes;
-  }[];
+  methods: MethodDescription[];
 }
 
-
+export interface MethodDescription extends JsDocable {
+  access_modifiers?: UnifiedModifier[];
+  name: string;
+  decorators?: DecoratorCallDescription[];
+  parameters: ParameterDescription[];
+  return_value: UnifiedTypes;
+}
 
 
 export type AccessorDescription = {

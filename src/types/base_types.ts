@@ -11,7 +11,7 @@ export interface DecoratorCallDescription {
 }
 
 export interface JsDocable {
-  comment?: string;
+  comment?: any;
 }
 
 export interface BaseArgumentParameterDescription {

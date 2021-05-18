@@ -8,12 +8,12 @@ import {
   ConstructorDeclaration, DeclareKeyword,
   Decorator, DefaultKeyword, ExportKeyword,
   ExpressionWithTypeArguments,
-  FunctionExpression, GetAccessorDeclaration,
+  FunctionExpression, FunctionLikeDeclarationBase, GetAccessorDeclaration, HasJSDoc,
   HeritageClause,
   Identifier,
   IndexSignatureDeclaration,
-  IntersectionTypeNode,
-  MethodDeclaration, Modifier, ModifiersArray,
+  IntersectionTypeNode, JSDocTypeReferencingNode,
+  MethodDeclaration, Modifier, ModifierFlags, ModifiersArray,
   NewExpression,
   Node,
   NodeArray,
@@ -33,8 +33,14 @@ import {
   TypeReferenceNode,
   UnionTypeNode,
 } from "typescript";
-import { getIdentifierName, } from "./helper_function";
-import { ArgumentDescription, ClassDescription, ClassExtender, ParameterDescription } from "../types/types";
+import { get_type, getIdentifierName, } from "./helper_function";
+import {
+  ArgumentDescription,
+  ClassDescription,
+  ClassExtender,
+  MethodDescription,
+  ParameterDescription
+} from "../types/types";
 import { UnifiedTypes } from "../types/argument_types";
 import { get_node_type } from "./get_node_type";
 import { DecoratorCallDescription, UnifiedModifier } from "../types/base_types";
@@ -63,6 +69,19 @@ export class SourceAnalyzer {
       'arr_printer(): ',
       this.get_text(nodes)
     );
+  }
+
+  print (x: Node | NodeArray<Node>) {
+      const [metod, str] = x.hasOwnProperty('length')
+        ? [this.print_r, 'Print called on: NodeArray']
+        : [this.printer, 'Print called on: Node'];
+
+
+      console.log(str);
+      //@ts-ignore
+    (metod.bind(this))(x);
+        this.print_r(<NodeArray<Node>> x);
+        this.printer(<Node> x);
   }
 
   printer(x: Node, kind: string = '') {
@@ -159,13 +178,24 @@ export class SourceAnalyzer {
 
         case SyntaxKind.Constructor: {
           const constructor = <ConstructorDeclaration>e;
-          methods.push({
+          // this.printer(constructor);
+          const obj: MethodDescription = {
             name,
             decorators,
             parameters: this.analyze_parameters(constructor.parameters),
             return_value: UnifiedTypes.Object,
             access_modifiers: constructor.modifiers ? this.getModifiers(constructor.modifiers) : [],
-          })
+          };
+
+          if (constructor.hasOwnProperty('jsDoc')) {
+            const js_docs = <NodeArray<JSDocTypeReferencingNode>>((<any>constructor).jsDoc);
+            // console.log(<NodeArray<any>>((<any>constructor).jsDoc));
+            if (js_docs) {
+              obj.comment = this.analyze_js_doc(js_docs);
+            }
+          }
+          // console.log(Object.keys(e));
+          methods.push()
           break;
         }
         case SyntaxKind.GetAccessor: {
@@ -538,5 +568,39 @@ export class SourceAnalyzer {
        }
     });
     return arr;
+  }
+
+  analyze_js_doc(method_like: NodeArray<JSDocTypeReferencingNode>): any {
+    // console.log(method_like.jsDoc);
+    method_like.forEach((e: JSDocTypeReferencingNode) => {
+      if (e.hasOwnProperty('tags')) {
+        //@ts-ignore
+        console.log(this.print(e.tags));
+
+      }
+      // if (e.kind === SyntaxKind.JSDocComment) {}
+
+    //   const call_if_exists = (e: Object, property: string | symbol | any) => {
+    //     console.log({
+    //       //@ts-ignore
+    //       'hasOwnProperty: ': e.hasOwnProperty(property),
+    //       //@ts-ignore
+    //       'property: ': e[property]
+    //     })
+    //   }
+    //
+    //   console.log(Object.keys(e));
+    //   Object.keys(e).forEach((key) => {
+    //     call_if_exists(e,key);
+    //   })
+    //
+    //   // this.print(e); console.log('\n');
+    //
+    });
+    // console.log(method_like.length);
+    // throw new Error('');
+
+
+
   }
 }
