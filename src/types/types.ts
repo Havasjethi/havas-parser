@@ -1,4 +1,11 @@
 import { UnifiedTypes } from "./argument_types";
+import {
+  AccessModifier,
+  BaseArgumentParameterDescription,
+  Decorable,
+  DecoratorCallDescription,
+  JsDocable, UnifiedModifier
+} from "./base_types";
 
 export interface ClassExtender {
   class_name: string,
@@ -8,7 +15,7 @@ export interface ClassExtender {
   }[];
   // Generic
   // Bool for interface ?? || Type == Extend | Implements
-};
+}
 
 export interface ClassDescription {
   name: string | undefined; // Anonim
@@ -19,45 +26,40 @@ export interface ClassDescription {
   interfaces: ClassExtender[];
   extended_class: undefined | ClassExtender;
   decorators: DecoratorCallDescription[];
-  fields: {
-    access_modifier?: AccessModifier;
+  properties: {
+    access_modifier?: UnifiedModifier[];
     name: string;
     type: string;
     default_value: string;
-    decorators?: ClassDescription['decorators'];
+    decorators?: DecoratorCallDescription[];
   }[];
   accessors?: AccessorDescription[];
   methods: {
-    access_modifier?: AccessModifier;
+    access_modifiers?: UnifiedModifier[];
     name: string;
-    decorators?: ClassDescription['decorators'];
+    decorators?: DecoratorCallDescription[];
     parameters: ParameterDescription[];
     return_value: UnifiedTypes;
   }[];
 }
 
-export interface ArgumentDescription {
-  argument_type: UnifiedTypes;
-  argument_value: any;
-  index: number;
-}
 
-export interface DecoratorCallDescription {
-  name?: string;
-  parameters: ArgumentDescription[];
-}
 
-export type AccessorDescription = any;
 
-export interface ParameterDescription {
-  index: number;
+export type AccessorDescription = {
+  type: 'Get' | 'Set';
   name: string;
-  type: UnifiedTypes;
-  default_value?: any;
-  spread?: boolean;
+  access_modifiers?: UnifiedModifier[];
+};
+
+export interface ArgumentDescription extends BaseArgumentParameterDescription {
+  value?: any;
 }
 
-export type AccessModifier = string;
+export interface ParameterDescription extends BaseArgumentParameterDescription, Decorable, JsDocable {
+  name: string;
+  default_value?: any;
+}
 
 export interface Callable {
   arguments: any[];

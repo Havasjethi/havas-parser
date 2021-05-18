@@ -37,3 +37,11 @@ export enum UnifiedTypes {
   FunctionCall = ExtraValue.FunctionCall,
 }
 
+export interface TypeDescription {
+  type: UnifiedTypes;
+  wildcard?: boolean;
+}
+
+export interface NamedType extends TypeDescription{
+  name: string,
+}

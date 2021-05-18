@@ -1,33 +1,48 @@
 import {
-  ArrowFunction,
+  AbstractKeyword,
+  AccessorDeclaration,
+  ArrayTypeNode,
+  ArrowFunction, AsyncKeyword,
   CallExpression,
-  ClassDeclaration,
-  Decorator,
+  ClassDeclaration, ConstKeyword,
+  ConstructorDeclaration, DeclareKeyword,
+  Decorator, DefaultKeyword, ExportKeyword,
   ExpressionWithTypeArguments,
-  FunctionExpression,
+  FunctionExpression, GetAccessorDeclaration,
   HeritageClause,
-  Identifier, IndexSignatureDeclaration, IntersectionType, IntersectionTypeNode, LiteralType,
+  Identifier,
+  IndexSignatureDeclaration,
+  IntersectionTypeNode,
+  MethodDeclaration, Modifier, ModifiersArray,
   NewExpression,
   Node,
-  NodeArray, NumericLiteral,
+  NodeArray,
   ObjectLiteralExpression,
-  ParenthesizedExpression,
-  PropertyAccessExpression, PropertyDeclaration, ReadonlyTextRange,
+  ParameterDeclaration,
+  ParenthesizedExpression, PrivateKeyword,
+  PropertyAccessExpression,
+  PropertyDeclaration, ProtectedKeyword, PublicKeyword, ReadonlyKeyword,
+  ReadonlyTextRange, SetAccessorDeclaration,
   SourceFile,
-  Statement,
+  Statement, StaticKeyword,
   StringLiteral,
-  SyntaxKind, TypeElement, TypeLiteralNode,
-  TypeNode, TypeReference,
-  TypeReferenceNode, UnionType, UnionTypeNode,
+  SyntaxKind,
+  TypeLiteralNode,
+  TypeNode,
+  TypeReference,
+  TypeReferenceNode,
+  UnionTypeNode,
 } from "typescript";
 import { getIdentifierName, } from "./helper_function";
-import { ArgumentDescription, ClassDescription, ClassExtender, DecoratorCallDescription } from "../types/types";
+import { ArgumentDescription, ClassDescription, ClassExtender, ParameterDescription } from "../types/types";
 import { UnifiedTypes } from "../types/argument_types";
 import { get_node_type } from "./get_node_type";
+import { DecoratorCallDescription, UnifiedModifier } from "../types/base_types";
 
 export class SourceAnalyzer {
 
-  constructor(public file: SourceFile) { }
+  constructor(public file: SourceFile) {
+  }
 
   set_new_source = (file: SourceFile) => this.file = file;
 
@@ -35,7 +50,7 @@ export class SourceAnalyzer {
     return this.arr_printer(nodes);
   }
 
-  get_text (node: ReadonlyTextRange, trim: boolean = true) {
+  get_text(node: ReadonlyTextRange, trim: boolean = true) {
     const sliced_string = this.file.text.slice(
       node.pos,
       node.end
@@ -70,10 +85,13 @@ export class SourceAnalyzer {
   }
 
   fromClassDeclaration(declaration: ClassDeclaration): ClassDescription {
-    const decorators = this.decorators(declaration.decorators);
+    const decorators = this.analyze_decorators(declaration.decorators);
     const name = getIdentifierName(declaration.name);
     let extended_class: ClassDescription["extended_class"] = undefined;
     const interfaces: ClassDescription["interfaces"] = [];
+    const methods: ClassDescription["methods"] = [];
+    const properties: ClassDescription["properties"] = [];
+    const accessors: ClassDescription["accessors"] = [];
 
     if (declaration.heritageClauses) {
       declaration.heritageClauses.forEach((e: HeritageClause) => {
@@ -92,54 +110,106 @@ export class SourceAnalyzer {
 
     declaration.members.forEach(e => {
       switch (e.kind) {
-        case SyntaxKind.PropertyDeclaration:
+        case SyntaxKind.PropertyDeclaration: {
           const property: PropertyDeclaration = <PropertyDeclaration>e;
           const property_name = getIdentifierName(property.name);
-          // this.printer(property);
+          const property_description: any = {};
 
           if (property.type) {
-            // console.log(get_node_type(property.type)); // TypeNode
-            this.analyze_type(property.type);
-            //
+            property_description.type = this.analyze_type(property.type);
           }
+
           if (property.initializer) {
-
+            property_description.has_initializer = true;
           }
 
-          // property.hasOwnProperty('jsDoc') && property['jsDoc']
-          // console.log();
-
+          if (property.hasOwnProperty('jsDoc')) {
+            // TODO :: Add comment analization
+            // //@ts-ignore
+            // const y = property['jsDoc'];
+            // const x = {};
+            // if (y.tags) {
+            //   y.tags.map(e => {})
+            // }
+            // console.log(y);
+          }
           break;
-        case SyntaxKind.MethodDeclaration:
-        case SyntaxKind.Constructor:
-        case SyntaxKind.GetAccessor:
-        case SyntaxKind.SetAccessor:
+
+        }
+
+        case SyntaxKind.MethodDeclaration: {
+          const method: MethodDeclaration = <MethodDeclaration> e;
+
+          const name = getIdentifierName(method.name);
+          const decorators = this.analyze_decorators(method.decorators);
+          const parameters = this.analyze_parameters(method.parameters);
+          const object: ClassDescription['methods'][0] = {
+            name,
+            decorators,
+            parameters: [],
+            access_modifiers: method.modifiers ? this.getModifiers(method.modifiers) : [],
+            return_value: UnifiedTypes.Undefined,
+          }
+
+          if ((<any>e).type) {
+            object.return_value = this.analyze_type((<any>e).type);
+          }
+          break;
+        }
+
+        case SyntaxKind.Constructor: {
+          const constructor = <ConstructorDeclaration>e;
+          methods.push({
+            name,
+            decorators,
+            parameters: this.analyze_parameters(constructor.parameters),
+            return_value: UnifiedTypes.Object,
+            access_modifiers: constructor.modifiers ? this.getModifiers(constructor.modifiers) : [],
+          })
+          break;
+        }
+        case SyntaxKind.GetAccessor: {
+          const accessor = <GetAccessorDeclaration>e;
+          accessors.push({
+            name: getIdentifierName(accessor.name),
+            access_modifiers: accessor.modifiers ? this.getModifiers(accessor.modifiers) : [],
+            type: 'Get',
+          });
+          break;
+        }
+        case SyntaxKind.SetAccessor: {
+          const accessor = <SetAccessorDeclaration>e;
+          accessors.push({
+            name: getIdentifierName(accessor.name),
+            access_modifiers: accessor.modifiers ? this.getModifiers(accessor.modifiers) : [],
+            type: 'Set',
+          });
+          break;
+        }
       }
-      // this.printer(e);
-    })
+    });
 
     const description: ClassDescription = {
       generic_types: {extends: [], type_name: ""},
       interfaces: interfaces,
-      methods: [],
+      methods,
       decorators: decorators,
       accessors: [],
       extended_class: extended_class,
-      fields: [],
+      properties,
       name: name
     };
 
     return description;
   }
 
-  decorators(node_array: NodeArray<Decorator> | undefined): DecoratorCallDescription[] {
+  analyze_decorators(node_array: NodeArray<Decorator> | undefined): DecoratorCallDescription[] {
     if (!node_array) {
       return [];
     }
 
     return node_array.map(value => this.getClassDecorator(value));
   }
-
 
   getClassDecorator(decorator: Decorator): DecoratorCallDescription {
     const description: DecoratorCallDescription = {
@@ -164,17 +234,17 @@ export class SourceAnalyzer {
     return description;
   }
 
-
   argument_parser(nodes: NodeArray<Node>): ArgumentDescription[] {
     const argument_array: ArgumentDescription[] = [];
 
     nodes.forEach((node: Node, index) => {
-      const add = (argument_type: ArgumentDescription['argument_type'], argument_value: ArgumentDescription['argument_value']) => {
-        argument_array.push({
-          argument_type,
-          argument_value,
-          index: index,
-        });
+      const add = (argument_type: ArgumentDescription['type'], argument_value: ArgumentDescription['value']) => {
+        const x: ArgumentDescription = {
+          type: argument_type,
+          value: argument_value,
+          index,
+        };
+        argument_array.push(x);
       }
 
       switch (node.kind) {
@@ -291,11 +361,16 @@ export class SourceAnalyzer {
     }
   }
 
-  analyze_type (node: TypeNode) {
+  /**
+   * TODO :: return
+   * @see {NamedType} => Consistent types
+   * @param node
+   */
+  analyze_type(node: TypeNode) {
     let result: any;
     switch (node.kind) {
       case SyntaxKind.UnionType: {
-        const types = (<UnionTypeNode> node).types.map(e => this.analyze_type(e));
+        const types = (<UnionTypeNode>node).types.map(e => this.analyze_type(e));
         result = {
           type: 'Union',
           types: types,
@@ -313,7 +388,7 @@ export class SourceAnalyzer {
         };
         break;
       case SyntaxKind.IntersectionType: {
-        const types = (<IntersectionTypeNode> node).types.map(e => this.analyze_type(e));
+        const types = (<IntersectionTypeNode>node).types.map(e => this.analyze_type(e));
         result = {
           type: 'Intersection',
           types: types,
@@ -351,12 +426,17 @@ export class SourceAnalyzer {
           }
         } else {
           console.log('Hello');
-          result = { type: text };
+          result = {type: text};
         }
         break;
       case SyntaxKind.BooleanKeyword:
         result = {
           type: 'Boolean',
+        }
+        break;
+      case SyntaxKind.VoidKeyword:
+        result = {
+          type: 'Void',
         }
         break;
       case SyntaxKind.TypeLiteral: {
@@ -372,13 +452,11 @@ export class SourceAnalyzer {
           } else {
             // TODO :: Add extended indexing
             //@ts-ignore
-            console.log('IndexSignatureDeclaration: ', (<IndexSignatureDeclaration>e).parameters[0].name.escapedText.toString());
-            return  {
+            return {
               name: 'code',
               type: this.get_text((<IndexSignatureDeclaration>e).type),
               wildcard: true,
             }
-            console.log('No name', get_node_type(node));
           }
         });
         result = {
@@ -387,19 +465,78 @@ export class SourceAnalyzer {
           'type_': 'TypeLiteral'
         };
 
-        this.printer(node);
-        console.log(result);
-        console.log();
+        // this.printer(node);
+        // console.log(result);
+        // console.log();
         break;
       }
 
+      case SyntaxKind.ArrayType:  // (asd: any[])
+        result = {
+          type: this.analyze_type((<ArrayTypeNode>node).elementType),
+          'type_': 'ArrayType'
+        };
+        break;
       default: {
         const type = get_node_type(node);
         console.log('typetypetypetypetype: ', type);
       }
     }
 
-    // console.log('RESTULR   ',result);
     return result;
+  }
+
+  analyze_parameters(node: NodeArray<ParameterDeclaration>): ParameterDescription[] {
+    return node.map((e, index) => {
+      const type = e.type ? (this.analyze_type(e.type) ?? {type: 'Unknown'}) : {type: 'Unknown'};
+      return {
+        type,
+        index,
+        'name': this.getParameterName(e.name),
+        'decorators': this.analyze_decorators(e.decorators),
+        'has_spread': e.dotDotDotToken !== undefined,
+      };
+    });
+  }
+
+  getParameterName(s: ParameterDeclaration["name"]): string {
+    return s.getText(this.file);
+  }
+
+  /**
+   * Limited for the Keywords that are found in classes
+   * @param node
+   */
+  getModifiers(node: ModifiersArray): UnifiedModifier[] {
+    const arr: UnifiedModifier[] = [];
+      node.map(e => {
+       switch (e.kind) {
+         case SyntaxKind.AbstractKeyword:
+           arr.push('abstract');
+           break;
+
+         case SyntaxKind.PublicKeyword:
+           arr.push('public');
+           break;
+
+         case SyntaxKind.ProtectedKeyword:
+           arr.push('protected');
+           break;
+
+         case SyntaxKind.PrivateKeyword:
+           arr.push('private');
+           break;
+
+         case SyntaxKind.ReadonlyKeyword:
+           arr.push('readonly');
+           break;
+
+         case SyntaxKind.StaticKeyword:
+           arr.push('static');
+           break;
+
+       }
+    });
+    return arr;
   }
 }
