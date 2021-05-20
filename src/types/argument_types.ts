@@ -1,10 +1,4 @@
-
-export enum ArgumentExpression {
-  ParenthesizedExpression = 'ParenthesizedExpression',
-  FunctionExpression = 'FunctionExpression',
-  NewExpression = 'NewExpression',
-  CallExpression = 'CallExpression',
-}
+import { TypeDescription } from "./types";
 
 export enum ArgumentLiteral {
   ObjectLiteralExpression = 'ObjectLiteralExpression',
@@ -35,13 +29,4 @@ export enum UnifiedTypes {
   Unknown = ExtraValue.Unknown,
   Variable = ExtraValue.Variable,
   FunctionCall = ExtraValue.FunctionCall,
-}
-
-export interface TypeDescription {
-  type: UnifiedTypes;
-  wildcard?: boolean;
-}
-
-export interface NamedType extends TypeDescription{
-  name: string,
 }
