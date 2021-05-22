@@ -1,66 +1,28 @@
-import { UnifiedTypes } from "./argument_types";
+import { BaseArgumentParameterDescription, ClassDescription, Decorable, JsDocable, UnifiedTypes } from "./index";
 
-export interface ClassExtender {
-  class_name: string,
-  generics: undefined | { // Note This doesn't display values from default values
-    name: string,
-    index: string,
-  }[];
-  // Generic
-  // Bool for interface ?? || Type == Extend | Implements
-};
-
-export interface ClassDescription {
-  name: string | undefined; // Anonim
-  generic_types?: {
-    type_name: string;
-    extends: string[];
-  };
-  interfaces: ClassExtender[];
-  extended_class: undefined | ClassExtender;
-  decorators: DecoratorCallDescription[];
-  fields: {
-    access_modifier?: AccessModifier;
-    name: string;
-    type: string;
-    default_value: string;
-    decorators?: ClassDescription['decorators'];
-  }[];
-  accessors?: AccessorDescription[];
-  methods: {
-    access_modifier?: AccessModifier;
-    name: string;
-    decorators?: ClassDescription['decorators'];
-    parameters: ParameterDescription[];
-    return_value: UnifiedTypes;
-  }[];
-}
-
-export interface ArgumentDescription {
-  argument_type: UnifiedTypes;
-  argument_value: any;
-  index: number;
-}
-
-export interface DecoratorCallDescription {
+export interface DecoratorDescription {
   name?: string;
   parameters: ArgumentDescription[];
 }
 
-export type AccessorDescription = any;
-
-export interface ParameterDescription {
-  index: number;
-  name: string;
-  type: UnifiedTypes;
-  default_value?: any;
-  spread?: boolean;
+export interface ArgumentDescription extends BaseArgumentParameterDescription {
+  type: TypeDescription;
+  value?: any;
 }
 
-export type AccessModifier = string;
+export interface ParameterDescription extends BaseArgumentParameterDescription, Decorable, JsDocable {
+  type: TypeDescription;
+  name: string;
+  default_value?: any;
+}
 
-export interface Callable {
-  arguments: any[];
-  name: string | undefined;
-  return_type: any;
+export interface TypeDescription {
+  type: UnifiedTypes;
+  types?: TypeDescription[];
+  name?: string;
+  wildcard?: boolean;
+}
+
+export interface FileDeclarations {
+  class_declarations: ClassDescription[];
 }

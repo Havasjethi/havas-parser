@@ -1,12 +1,11 @@
 import {
   ExpressionWithTypeArguments,
-  Identifier,
-  Node,
+  Identifier, JSDocContainer,
+  Node, NumericLiteral,
   ParenthesizedExpression,
-  PropertyAccessExpression,
+  PropertyAccessExpression, PropertyDeclaration, QualifiedName, StringLiteral,
   SyntaxKind
 } from "typescript";
-import { ClassExtender } from "../types/types";
 import { get_node_type } from "./get_node_type";
 
 export function print_type (statement: Node) {
@@ -14,19 +13,44 @@ export function print_type (statement: Node) {
 }
 
 function untangle(expression: ParenthesizedExpression) {
-  // TODO :: Analyze expression, it be readable readable
+  // TODO :: Analyze expression, it be readable, Like (3), (new A())
   return expression;
 }
 
+export function is_identifier (x: Identifier | QualifiedName): x is Identifier {
+  return (x as Identifier).escapedText !== undefined;
+}
 
-export function getIdentifierName (input: Identifier | PropertyAccessExpression | undefined): string {
+export function has_jsdoc (node: JSDocContainer): boolean {
+  return node.hasOwnProperty('jsDoc');
+}
+
+
+export function getIdentifierName (input: Identifier | QualifiedName | PropertyAccessExpression | PropertyDeclaration["name"] | undefined): string {
+  let str = '';
+
   if (!input) {
-    return '';
-  } else if (input.kind === SyntaxKind.Identifier) {
-    return (<Identifier> input).escapedText.toString();
-  } else if (input.kind === SyntaxKind.PropertyAccessExpression) {
-    return (<PropertyAccessExpression> input).name.escapedText.toString();
+    return str;
+  }
+  switch (input.kind) {
+    case (SyntaxKind.Identifier):
+      str = (<Identifier> input).escapedText.toString();
+      break
+
+    case (SyntaxKind.PropertyAccessExpression):
+      str = (<PropertyAccessExpression> input).name.escapedText.toString();
+      break
+
+    case SyntaxKind.StringLiteral:
+    case SyntaxKind.NumericLiteral:
+      str = (<StringLiteral | NumericLiteral> input).text;
+      break;
+
+    case SyntaxKind.ComputedPropertyName:
+    case SyntaxKind.PrivateIdentifier:
+      console.log('ComputedPropertyName / PrivateIdentifier found');
+      break;
   }
 
-  throw new Error('Invalid input');
+  return str;
 }
