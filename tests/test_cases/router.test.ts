@@ -52,7 +52,8 @@ describe('Router test', () => {
     expect(method.parameters[0].decorators[0].name).toBe('PathVariable');
     expect(method.parameters[0].decorators[0].parameters[0].type.type).toBe(UnifiedTypes.String);
     expect(method.parameters[0].decorators[0].parameters[0].value).toBe("'id'");
-
+    expect(method.return_value.type).toBe(UnifiedTypes.Object);
+    expect(method.return_value.name).toBe('User');
   });
 
 });
