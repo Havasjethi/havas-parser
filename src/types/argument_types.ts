@@ -17,6 +17,12 @@ export enum ExtraValue {
   Unknown = 'Unknown',
   Variable = 'Variable',
   FunctionCall = 'FunctionCall',
+  Union = 'Union',
+  Any = 'Any',
+  Intersection = 'Intersection',
+  Boolean = 'Boolean',
+  Void = 'Void',
+  Array = 'Array',
 }
 
 export enum UnifiedTypes {
@@ -29,4 +35,10 @@ export enum UnifiedTypes {
   Unknown = ExtraValue.Unknown,
   Variable = ExtraValue.Variable,
   FunctionCall = ExtraValue.FunctionCall,
+  Union = ExtraValue.Union,
+  Any = ExtraValue.Any,
+  Intersection = ExtraValue.Intersection,
+  Boolean = ExtraValue.Boolean,
+  Void = ExtraValue.Void,
+  Array = ExtraValue.Array,
 }

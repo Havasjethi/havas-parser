@@ -1,6 +1,6 @@
 {
   "exclude": [
-    "test_files/"
+    "tests/"
   ],
   "compilerOptions": {
       "experimentalDecorators": true,

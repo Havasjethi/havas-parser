@@ -1,20 +1,30 @@
 import {
-  AccessorDeclaration, ArrayTypeNode,
+  AccessorDeclaration,
+  ArrayTypeNode,
   ArrowFunction,
   CallExpression,
   ClassDeclaration,
   ConstructorDeclaration,
-  Decorator, EntityName,
+  Decorator,
+  EntityName,
   ExpressionWithTypeArguments,
   FunctionExpression,
   GetAccessorDeclaration,
   HeritageClause,
-  Identifier, IndexSignatureDeclaration, IntersectionTypeNode, JSDoc, JSDocContainer, JSDocPropertyLikeTag, JSDocTag,
-  MethodDeclaration, ModifiersArray,
+  Identifier,
+  IndexSignatureDeclaration,
+  IntersectionTypeNode,
+  JSDoc,
+  JSDocContainer,
+  JSDocPropertyLikeTag,
+  JSDocTag,
+  MethodDeclaration,
+  ModifiersArray,
   NewExpression,
   Node,
   NodeArray,
-  ObjectLiteralExpression, ParameterDeclaration,
+  ObjectLiteralExpression,
+  ParameterDeclaration,
   ParenthesizedExpression,
   PropertyAccessExpression,
   PropertyDeclaration,
@@ -22,18 +32,29 @@ import {
   SetAccessorDeclaration,
   SourceFile,
   StringLiteral,
-  SyntaxKind, TypeLiteralNode, TypeNode, TypeReferenceNode, UnionTypeNode
+  SyntaxKind,
+  TypeLiteralNode,
+  TypeNode,
+  TypeReferenceNode,
+  UnionTypeNode
 } from "typescript";
 import {
-  AccessorDescription, ArgumentDescription,
-  ClassDescription, ClassExtender,
-  DecoratorDescription, JsDocCommentDescription,
-  MethodDescription, ParameterDescription,
-  PropertyDescription, TagDescription, TypeDescription, UnifiedModifier,
-  UnifiedTypes,
+  AccessorDescription,
+  ArgumentDescription,
+  ClassDescription,
+  ClassExtender,
+  DecoratorDescription,
   FileDeclarations,
+  JsDocCommentDescription,
+  MethodDescription,
+  ParameterDescription,
+  PropertyDescription,
+  TagDescription,
+  TypeDescription,
+  UnifiedModifier,
+  UnifiedTypes,
 } from "../types";
-import { has_jsdoc, is_identifier, get_node_type, getIdentifierName } from "../utils";
+import { get_node_type, getIdentifierName, has_jsdoc, is_identifier } from "../utils";
 
 export class SourceAnalyzer {
 
@@ -368,31 +389,31 @@ export class SourceAnalyzer {
   }
 
   analyze_type(node: TypeNode): TypeDescription {
-    let result: any;
+    let result: TypeDescription = { type: UnifiedTypes.Unknown }; // Any might be better?
 
     switch (node.kind) {
       case SyntaxKind.UnionType: {
         const types = (<UnionTypeNode>node).types.map(e => this.analyze_type(e));
         result = {
-          type: 'Union',
+          type: UnifiedTypes.Union,
           types: types,
         };
         break;
       }
       case SyntaxKind.UndefinedKeyword:
         result = {
-          type: 'Undefined',
+          type: UnifiedTypes.Undefined,
         };
         break;
       case SyntaxKind.AnyKeyword:
         result = {
-          type: 'Any'
+          type: UnifiedTypes.Any,
         };
         break;
       case SyntaxKind.IntersectionType: {
         const types = (<IntersectionTypeNode>node).types.map(e => this.analyze_type(e));
         result = {
-          type: 'Intersection',
+          type: UnifiedTypes.Intersection,
           types: types,
         };
 
@@ -400,23 +421,23 @@ export class SourceAnalyzer {
       }
       case SyntaxKind.TypeReference:
         result = {
-          type: 'TypeReference',
+          type: UnifiedTypes.Object,
           name: getIdentifierName((<TypeReferenceNode>node).typeName)
         };
         break;
       case SyntaxKind.NumberKeyword:
         result = {
-          type: 'Number',
+          type: UnifiedTypes.Number,
         };
         break;
       case SyntaxKind.StringKeyword:
         result = {
-          type: 'String',
+          type: UnifiedTypes.String,
         }
         break;
       case SyntaxKind.ObjectKeyword:
         result = {
-          type: 'Object',
+          type: UnifiedTypes.Object,
         }
         break;
       case SyntaxKind.LiteralType:
@@ -424,21 +445,20 @@ export class SourceAnalyzer {
         const text = this.get_text(node.literal);
         if (text === 'null') {
           result = {
-            type: 'Null',
+            type: UnifiedTypes.Null,
           }
         } else {
-          console.log('Hello');
-          result = {type: text};
+          result = {type: UnifiedTypes.Unknown, name: text};
         }
         break;
       case SyntaxKind.BooleanKeyword:
         result = {
-          type: 'Boolean',
+          type: UnifiedTypes.Boolean,
         }
         break;
       case SyntaxKind.VoidKeyword:
         result = {
-          type: 'Void',
+          type: UnifiedTypes.Void,
         }
         break;
       case SyntaxKind.TypeLiteral: {
@@ -447,7 +467,7 @@ export class SourceAnalyzer {
             return Object.assign(
               {
                 name: this.get_text(e.name),
-                type: 'Unknow',
+                type: UnifiedTypes.Unknown,
               },
               this.analyze_type((<any>e).type),
             );
@@ -455,16 +475,16 @@ export class SourceAnalyzer {
             // TODO :: Add extended indexing
             //@ts-ignore
             return {
-              name: 'code',
-              type: this.get_text((<IndexSignatureDeclaration>e).type),
+              name: this.get_text((<IndexSignatureDeclaration>e).type),
+              type: UnifiedTypes.Array,
               wildcard: true,
             }
           }
         });
         result = {
-          type: 'Object',
+          type: UnifiedTypes.Object,
           types: types,
-          'type_': 'TypeLiteral'
+          // 'type_': 'TypeLiteral'
         };
 
         break;
@@ -472,8 +492,8 @@ export class SourceAnalyzer {
 
       case SyntaxKind.ArrayType:  // (asd: any[])
         result = {
-          type: this.analyze_type((<ArrayTypeNode>node).elementType),
-          'type_': 'ArrayType'
+          type: UnifiedTypes.Array,
+          types: [this.analyze_type((<ArrayTypeNode>node).elementType)],
         };
         break;
       default: {
