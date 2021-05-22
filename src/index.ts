@@ -16,7 +16,7 @@ export function analyze_file(file_path: string): ClassDescription[] {
 }
 
 export function analyze_text(file_content: string, file_name: string, file_version = ScriptTarget.Latest): ClassDescription[] {
-  const source_file = createSourceFile(file_content, file_name, file_version);
+  const source_file = createSourceFile(file_name, file_content, file_version);
 
   return analyzer.analyze(source_file).class_declarations;
 }

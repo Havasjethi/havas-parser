@@ -1,9 +1,6 @@
-import { analyze_file, analyze_text, UnifiedTypes } from "../../src";
-import * as fs from "fs";
+import { analyze_file, UnifiedTypes } from "../../src";
 
 test('Test_1', () => {
-  // const xxx =fs.readFileSync('./tests/test_files/A.ts', {encoding: "utf8"});
-  // console.log(xxx);
   const result = analyze_file('./tests/test_files/A.ts');
 
   console.log(result);
@@ -14,7 +11,7 @@ test('Test_1', () => {
   expect(only_class.methods.length).toBe(1);  // Constructor is a method
   expect(only_class.properties).toContainEqual({
     name: 'x',
-    type: { type: UnifiedTypes.Number },
+    type: {type: UnifiedTypes.Number},
     access_modifier: ['public']
   });
 });

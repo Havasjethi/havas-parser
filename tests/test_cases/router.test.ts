@@ -1,8 +1,10 @@
-import { analyze_file, UnifiedTypes } from "../../src";
+import { analyze_text, UnifiedTypes } from "../../src";
 import * as fs from "fs";
 
 describe('Router test', () => {
-  const result = analyze_file('./tests/test_files/router.ts')[0];
+  const read_file = fs.readFileSync('./tests/test_files/router.txt', {encoding: "utf8"});
+
+  const result = analyze_text(read_file, 'router.ts')[0];
 
   test('Router found', () => {
     expect(result).toBeDefined()
@@ -25,7 +27,7 @@ describe('Router test', () => {
   test('Router - Index method correct', () => {
     const index_method = result.methods.find(e => e.name === 'index');
     expect(index_method).toBeDefined();
-    if (index_method){
+    if (index_method) {
       expect(index_method.decorators).toBeDefined();
       const get_decor = index_method.decorators![0];
       expect(get_decor.name).toBe('Get');
